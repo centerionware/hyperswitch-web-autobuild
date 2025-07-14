@@ -8,7 +8,9 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
@@ -19,18 +21,41 @@ jobs:
           VERSION=$(cat hyperswitch-web/gitVersion)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Check if Docker image tag exists on GHCR
+        id: check_tag
+        run: |
+          IMAGE_TAG=v${{ steps.version.outputs.VERSION }}-helm
+          REPO=ghcr.io/centerionware/hyperswitch-web-autobuild/hyperswitch-web
+          GHCR_API="https://ghcr.io/v2/centerionware/hyperswitch-web-autobuild/hyperswitch-web/manifests/${IMAGE_TAG}"
+
+          echo "Checking if image $REPO:$IMAGE_TAG exists on GHCR..."
+
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" $GHCR_API)
+
+          if [ "$STATUS" = "200" ]; then
+            echo "Image tag already exists. Skipping build."
+            echo "skip_build=true" >> $GITHUB_OUTPUT
+          else
+            echo "Image tag does not exist. Proceeding with build."
+            echo "skip_build=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Clone hyperswitch-web repo at version branch
+        if: steps.check_tag.outputs.skip_build == 'false'
         run: |
           git clone --branch "v${{ steps.version.outputs.VERSION }}" https://github.com/juspay/hyperswitch-web.git other-repo
 
       - name: Set up Docker Buildx
+        if: steps.check_tag.outputs.skip_build == 'false'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to registry
+        if: steps.check_tag.outputs.skip_build == 'false'
         # This is where you will update the PAT to GITHUB_TOKEN
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Build and push multi-arch Docker image
+        if: steps.check_tag.outputs.skip_build == 'false'
         run: |
           IMAGE_TAG=ghcr.io/centerionware/hyperswitch-web-autobuild/hyperswitch-web:v${{ steps.version.outputs.VERSION }}-helm
 
@@ -42,5 +67,6 @@ jobs:
             other-repo
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
       - name: Push Docker image to GHCR
+        if: steps.check_tag.outputs.skip_build == 'false'
         run: |
           docker push "${{ steps.build.outputs.IMAGE_TAG }}"
