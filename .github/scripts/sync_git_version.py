@@ -25,7 +25,11 @@ def update_git_version(version):
         f.write(version + "\n")
 
 def run_git(*args):
-    return subprocess.run(["git"] + list(args), check=True, capture_output=True, text=True).stdout.strip()
+    try:
+        return subprocess.run(["git"] + list(args), check=True, capture_output=True, text=True,stderr=subprocess.STDOUT).stdout.strip()
+    except subprocess.CalledProcessError as e:
+        print("Exception on process, rc=", e.returncode, "output=", e.output)
+        exit(1)
 
 def main():
     remote_version = get_remote_git_version()
