@@ -42,7 +42,7 @@ jobs:
 
           if echo "$TAGS" | grep -q "^${TAG}$"; then
             echo "Tag '$TAG' exists. Skipping build."
-            echo "skip_build=false" >> $GITHUB_ENV
+            echo "skip_build=true" >> $GITHUB_ENV
           else
             echo "Tag '$TAG' not found. Proceeding with build."
             echo "skip_build=false" >> $GITHUB_ENV
