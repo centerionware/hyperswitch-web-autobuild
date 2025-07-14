@@ -11,6 +11,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      packages: read
     steps:
       - name: Checkout this repo
         uses: actions/checkout@v4
@@ -21,25 +22,26 @@ jobs:
           VERSION=$(cat hyperswitch-web/gitVersion)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Check if Docker image tag exists on GHCR
+      - name: Check if GHCR image exists
         id: check_tag
         shell: bash
         run: |
-          IMAGE_TAG="v${{ steps.version.outputs.VERSION }}-helm"
-          REPO="centerionware/hyperswitch-web-autobuild/hyperswitch-web"
-          GHCR_API="https://ghcr.io/v2/${REPO}/manifests/${IMAGE_TAG}"
+          VERSION="v${{ steps.version.outputs.VERSION }}-helm"
+          IMAGE_NAME="centerionware/hyperswitch-web-autobuild/hyperswitch-web"
+          URL="https://ghcr.io/v2/${IMAGE_NAME}/manifests/${VERSION}"
 
-          echo "Checking if image exists: ghcr.io/${REPO}:${IMAGE_TAG}"
+          echo "Checking GHCR for: $IMAGE_NAME:$VERSION"
 
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "$GHCR_API")
+            -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+            "$URL")
 
           if [[ "$STATUS" == "200" ]]; then
             echo "Image exists."
             echo "skip_build=true" >> $GITHUB_ENV
           else
-            echo "Image does not exist."
+            echo "Image not found. Status code: $STATUS"
             echo "skip_build=false" >> $GITHUB_ENV
           fi
 
