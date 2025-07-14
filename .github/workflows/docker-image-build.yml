@@ -21,26 +21,30 @@ jobs:
           VERSION=$(cat hyperswitch-web/gitVersion)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Check if GHCR image exists
+      - name: Check if Docker image tag exists on GHCR (via tags/list)
         id: check_tag
         shell: bash
         run: |
-          VERSION="v${{ steps.version.outputs.VERSION }}-helm"
           IMAGE_NAME="centerionware/hyperswitch-web-autobuild/hyperswitch-web"
-          URL="https://ghcr.io/v2/${IMAGE_NAME}/manifests/${VERSION}"
+          TAG="v${{ steps.version.outputs.VERSION }}-helm"
 
-          echo "Checking GHCR for: $IMAGE_NAME:$VERSION"
+          echo "Checking if tag '$TAG' exists for image '$IMAGE_NAME'..."
 
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
-            "$URL")
+          # Get a short-lived pull token from GHCR
+          TOKEN=$(curl -s \
+            "https://ghcr.io/token?scope=repository:${IMAGE_NAME}:pull" \
+            -u ${{ github.actor }}:${{ secrets.GHCR_TOKEN }} \
+            | jq -r '.token')
 
-          if [[ "$STATUS" == "200" ]]; then
-            echo "Image exists."
+          # Fetch the list of tags
+          TAGS=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
+            "https://ghcr.io/v2/${IMAGE_NAME}/tags/list" | jq -r '.tags[]')
+
+          if echo "$TAGS" | grep -q "^${TAG}$"; then
+            echo "Tag '$TAG' exists. Skipping build."
             echo "skip_build=true" >> $GITHUB_ENV
           else
-            echo "Image not found. Status code: $STATUS"
+            echo "Tag '$TAG' not found. Proceeding with build."
             echo "skip_build=false" >> $GITHUB_ENV
           fi
 
