@@ -65,8 +65,3 @@ jobs:
             --push \
             --tag $IMAGE_TAG \
             other-repo
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
-      - name: Push Docker image to GHCR
-        if: steps.check_tag.outputs.skip_build == 'false'
-        run: |
-          docker push "${{ steps.build.outputs.IMAGE_TAG }}"
