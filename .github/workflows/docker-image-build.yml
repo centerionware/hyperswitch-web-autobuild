@@ -48,17 +48,18 @@ jobs:
             echo "skip_build=false" >> $GITHUB_ENV
           fi
 
+
+      - name: Clone hyperswitch-web repo at version branch
+        if: env.skip_build == 'false'
+        run: |
+          git clone --branch "v${{ steps.version.outputs.VERSION }}" https://github.com/juspay/hyperswitch-web.git other-repo
+
       - name: Replace sdkVersion ARG in Dockerfile
         if: env.skip_build == 'false'
         run: |
           sed -i 's/^ARG sdkVersion$/ARG sdkVersion=${{ steps.version.outputs.VERSION }}/' other-repo/Dockerfile.helm
           echo "Updated line:"
           grep '^ARG sdkVersion=' other-repo/Dockerfile.helm
-
-      - name: Clone hyperswitch-web repo at version branch
-        if: env.skip_build == 'false'
-        run: |
-          git clone --branch "v${{ steps.version.outputs.VERSION }}" https://github.com/juspay/hyperswitch-web.git other-repo
 
       - name: Set up Docker Buildx
         if: env.skip_build == 'false'
