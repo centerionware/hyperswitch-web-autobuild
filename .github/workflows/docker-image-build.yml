@@ -42,11 +42,18 @@ jobs:
 
           if echo "$TAGS" | grep -q "^${TAG}$"; then
             echo "Tag '$TAG' exists. Skipping build."
-            echo "skip_build=true" >> $GITHUB_ENV
+            echo "skip_build=false" >> $GITHUB_ENV
           else
             echo "Tag '$TAG' not found. Proceeding with build."
             echo "skip_build=false" >> $GITHUB_ENV
           fi
+
+      - name: Replace sdkVersion ARG in Dockerfile
+        if: env.skip_build == 'false'
+        run: |
+          sed -i 's/^ARG sdkVersion$/ARG sdkVersion=${{ steps.version.outputs.VERSION }}/' other-repo/Dockerfile.helm
+          echo "Updated line:"
+          grep '^ARG sdkVersion=' other-repo/Dockerfile.helm
 
       - name: Clone hyperswitch-web repo at version branch
         if: env.skip_build == 'false'
