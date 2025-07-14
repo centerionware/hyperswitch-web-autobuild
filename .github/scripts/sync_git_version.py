@@ -26,7 +26,7 @@ def update_git_version(version):
 
 def run_git(*args):
     try:
-        return subprocess.run(["git"] + list(args), check=True, text=True, stderr=subprocess.STDOUT, stdout=subprocess.STDOUT)
+        return subprocess.run(["git"] + list(args), check=True, text=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
         print("Exception on process, rc=", e.returncode, "output=", e.output)
         exit(1)
